@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:objectstore="http://www.mulesoft.org/schema/mule/objectstore" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd">
+    <flow name="managed_object_storeFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/test" doc:name="HTTP"/>
+        <set-variable variableName="names" value="#[[]]" doc:name="Variable"/>
+        <enricher target="#[flowVars.names]" doc:name="Message Enricher">
+            <objectstore:retrieve config-ref="ManagedObjectStore" key="Name" doc:name="ObjectStore"/>
+        </enricher>
+        <logger message="#[flowVars.names]" level="INFO" doc:name="Logger"/>
+    </flow>
+
+<flow name="Flow1_idempotentWithCustomOS" >
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/OS_ManagedStore" doc:name="HTTP"/>
+        <idempotent-message-filter idExpression="#[message.inboundProperties.'http.query.params'.name]" throwOnUnaccepted="true"  doc:name="Idempotent Message" storePrefix="Name">
+            <managed-store storeName="ManagedObjectStore" persistent="true" maxEntries="120" entryTTL="120" expirationInterval="120000"/>
+        </idempotent-message-filter>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <set-payload value="Duplicate  parameter" doc:name="Set Payload" />
+        </catch-exception-strategy>
+    </flow>
+
+</mule>
